@@ -4,41 +4,62 @@ import openpyxl
 wb = openpyxl.load_workbook(filename = 'vars.xlsx')
 sheet = wb['Vars']
 
-vars = []
-values = []
-errors = []
-i = 2
-while True:
-    var = sheet.cell(row = i, column = 1).value
-    if not var:
-        break
-    vars.append(var)
-    values.append(sheet.cell(row = i, column = 2).value)
-    errors.append(sheet.cell(row = i, column = 3).value)
-    i += 1
+var_row_index = 2
+quant_of_calc = 0
 
-sym = []
-sum_square_errors = 0
+while sheet.cell(row = var_row_index, column = 1).value:
+    vars = []
+    values = []
+    errors = []
 
-formula = S(sheet.cell(row = 2, column = 4).value)
+    if sheet.cell(row = var_row_index, column = 1).value[:3].lower() == 'new':
+        res_name = sheet.cell(row = var_row_index, column = 1).value[4:]
+        quant_of_calc += 1
+        formula_row_index = var_row_index
+        var_row_index += 1
+        continue
 
-for i in range(len(vars)):
-    sym.append(symbols(vars[i]))
+    while sheet.cell(row = var_row_index, column = 1).value and sheet.cell(row = var_row_index, column = 1).value[:3].lower() != 'new':
+        var = sheet.cell(row = var_row_index, column = 1).value
+        vars.append(var)
+        values.append(sheet.cell(row = var_row_index, column = 2).value)
+        errors.append(sheet.cell(row = var_row_index, column = 3).value)
+        var_row_index += 1
 
-for i in range(len(vars)):
-    der = diff(formula, sym[i])
-    err = der**2 * errors[i]**2
-    sum_square_errors += err
+    sym = []
+    sum_square_errors = 0
 
-for i in range(len(vars)):
-    formula = formula.subs(sym[i], values[i])
-    sum_square_errors = sum_square_errors.subs(sym[i], values[i])
+    if sheet.cell(row = formula_row_index, column = 4).value:
+        formula = S(sheet.cell(row = formula_row_index, column = 4).value)
+    else:
+        formula = S(sheet.cell(row=2, column=5).value)
 
-error = sum_square_errors ** 0.5
+    for i in range(len(vars)):
+        sym.append(symbols(vars[i]))
 
-print('Значение:', float(formula))
-print('Абсолютная погрешность:', float(error))
-print('Относительная погрешность: ', float(error / formula * 100), '%', sep = '')
+    for i in range(len(vars)):
+        der = diff(formula, sym[i])
+        err = der**2 * errors[i]**2
+        sum_square_errors += err
+
+    for i in range(len(vars)):
+        formula = formula.subs(sym[i], values[i])
+        sum_square_errors = sum_square_errors.subs(sym[i], values[i])
+
+    error = sum_square_errors ** 0.5
+
+    sheet.cell(row= quant_of_calc + 1, column=7).value = res_name
+    sheet.cell(row= quant_of_calc + 1, column=8).value = float(formula)
+    sheet.cell(row= quant_of_calc + 1, column=9).value = float(error)
+    sheet.cell(row= quant_of_calc + 1, column=10).value = float(error / formula)
+
+    wb.save('vars.xlsx')
+
+    print('Название:', res_name)
+    print('Значение:', float(formula))
+    print('Абсолютная погрешность:', float(error))
+    print('Относительная погрешность: ', float(error / formula * 100), '%')
+    print()
 
 
 
